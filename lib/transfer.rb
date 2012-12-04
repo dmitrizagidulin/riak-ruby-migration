@@ -31,6 +31,12 @@ namespace :riak do
       object = bucket.get_or_new("test")
       puts "OK"
     end
+    
+    desc "Test xfer"
+    task :xfer_test do
+      
+    end
+    
   end
 end
 
@@ -52,23 +58,66 @@ class Transfer
 
   def run
     count = 0
+    max_retries = 3
+    time_start = Time.now
+    
     @buckets_1.each do |bucket_1|
+      puts "Bucket: " + bucket_1.name
+      bucket_count = 0
       bucket_2 = @cluster_2.bucket(bucket_1.name)
       bucket_1.keys do |streaming_keys|
         streaming_keys.each do |key|
-          timer = Time.now
-          object_1 = bucket_1.get(key)
-          object_2 = bucket_2.new(key)
-          [:key, :raw_data, :content_type, :indexes].each do |attr|
-            object_2.send("#{attr.to_s}=".to_sym, object_1.send(attr))
+          if key.empty?
+            next
           end
-          log "/buckets/#{bucket_1.name}/keys/#{key}", Time.now - timer
+          timer = Time.now
+          
+          success = false
+          retry_count = 1
+          
+          until success or (retry_count >= max_retries) do
+            begin
+              object_1 = bucket_1.get(key, {:r => 2})
+            rescue => e
+              retry_count += 1
+              next
+            else
+              success = true
+            end
+          end
+          unless success
+            puts "  Error getting key '" + key + "': " + e.message + " after #{retry_count} retries"
+          end
+          
+          object_2 = object_1.clone
+          object_2.bucket = bucket_2
+          success = false
+          retry_count = 1
+          until success or (retry_count >= max_retries) do
+            begin
+              object_2.store({:w => 2})
+            rescue => e
+              retry_count += 1
+              next
+            else
+              success = true 
+              log "/buckets/#{bucket_1.name}/keys/#{key}", Time.now - timer
+            end
+          end
+          unless success
+            puts "  Error writing key '" + key + "': " + e.message + " after #{retry_count} retries"
+          end
+            
           count += 1
-          print "." if count % 1000 == 0
+          bucket_count += 1
+          puts "#{bucket_count} keys..." if bucket_count % 1000 == 0
         end
       end
+      puts "#{bucket_count} keys transfered"
     end
-    puts "#{count} riak objects logged in #{@log_filename}"
+    time_end = Time.now
+    time_elapsed_total = time_end - time_start
+    puts "#{count} riak objects logged to #{@log_filename}. Elapsed time: #{time_elapsed_total}"
   end
 
   private
