@@ -1,6 +1,10 @@
 ## MAC OS
 .DS_Store
 
+## Eclipse / Rubymine
+.idea
+.buildpath
+
 ## TEXTMATE
 *.tmproj
 tmtags
