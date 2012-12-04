@@ -18,4 +18,9 @@ class Cluster
       raise RuntimeError, "Could not connect to the Riak node '#{cluster_name}'."
     end
   end
+  
+  def self.config(cluster_name)
+    config_path = File.join(ROOT,'config.yml')
+    config = Hash[YAML.load_file(config_path)[cluster_name].map{|k,v| [k.to_sym, v]}]
+  end
 end

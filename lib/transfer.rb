@@ -9,6 +9,28 @@ namespace :riak do
     task :B_to_A do
       Transfer.new("B", "A").run
     end
+    
+    desc "Test Connections to clusters A and B"
+    task :test_connections do
+      puts "Cluster A config:"
+      config_a = Cluster.config('A')
+      puts config_a
+      puts "Cluster B config:"
+      config_b = Cluster.config('B')
+      puts config_b
+      
+      puts "Connecting to Cluster A... "
+      connection_a = Riak::Client.new(:nodes => [config_a])
+      bucket = connection_a.bucket("test") 
+      object = bucket.get_or_new("test")
+      puts "OK"
+
+      puts "Connecting to Cluster B... "
+      connection_b = Riak::Client.new(:nodes => [config_b])
+      bucket = connection_b.bucket("test") 
+      object = bucket.get_or_new("test")
+      puts "OK"
+    end
   end
 end
 
