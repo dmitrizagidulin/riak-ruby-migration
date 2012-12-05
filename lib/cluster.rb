@@ -11,7 +11,7 @@ class Cluster
     begin
       config_path = File.join(ROOT,'config.yml')
       config = Hash[YAML.load_file(config_path)[cluster_name].map{|k,v| [k.to_sym, v]}]
-      @connection = Riak::Client.new(:nodes => [config])
+      @connection = Riak::Client.new(:nodes => [config], :http_backend => :Excon)
       bucket = @connection.bucket("test") 
       object = bucket.get_or_new("test") 
     rescue RuntimeError
